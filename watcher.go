@@ -1,10 +1,17 @@
 package giles
 
 import (
-	"github.com/Docker/docker/pkg/filenotify"
-	"go.uber.org/zap"
+	"bufio"
+	"io"
+	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
+
+	"github.com/Docker/docker/pkg/filenotify"
+	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 // Service provides us with a Name to use to identify the service when it's binary is built and run along with the path that it will run
@@ -100,6 +107,90 @@ func (w *watcher) Watch(services []Service) {
 	}
 }
 
+// Restart runs Stop then Start
 func (w *watcher) Restart(services []Service) {
+	err := w.Stop()
+	if err != nil {
+		w.logger.Error("Error: ", err)
+	}
+	w.Start(services)
+}
 
+// Stop ranges over the pids that Run adds to the watcher and kills each process. it then empties the pid slice
+func (w *watcher) Stop() error {
+	for _, pid := range w.pids {
+		proc, err := os.FindProcess(pid)
+		if err != nil {
+			return err
+		}
+		err = proc.Kill()
+		if err != nil {
+			return err
+		}
+		w.logger.Infow("PID Killed", "PID", pid)
+	}
+	w.pids = []int{}
+	return nil
+}
+
+// Start ranges over a slice of Service and ranges over the Children of the Service, running BuildAndRun for each child in a goroutine
+func (w *watcher) Start(services []Service) error {
+	for _, service := range services {
+		path := service.Path
+		name := service.Name
+		rand := uuid.NewString()
+		args := []string{name, path, rand}
+		go w.BuildAndRun(w.buildPath, args)
+
+	}
+	return nil
+}
+
+// BuildAndRun combines the Build and Run methods
+func (w *watcher) BuildAndRun(buildpath string, args []string) error {
+	binary, err := w.Build(buildpath, args)
+	if err != nil {
+		return err
+	}
+	return w.Run(binary)
+}
+
+// Build takes the buildpath to know what build script to run and any additional arguments to pass in
+func (w *watcher) Build(buildpath string, args []string) (string, error) {
+	output, err := exec.Command(buildpath, args...).Output()
+	if err != nil {
+		w.logger.Error(err)
+		return "", err
+	}
+	binary := strings.TrimSpace(string(output))
+	return binary, nil
+}
+
+// Run creates a command from the binary path provided, sets up stdout and stderr, starts the command, and appends the process's Pid
+func (w *watcher) Run(binary string) error {
+	cmd := exec.Command(binary)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		w.logger.Error(err)
+		return err
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		w.logger.Error(err)
+		return err
+	}
+	multi := io.MultiReader(stdout, stderr)
+	in := bufio.NewScanner(multi)
+	if err := cmd.Start(); err != nil {
+		w.logger.Error(err)
+		return err
+	}
+	w.pids = append(w.pids, cmd.Process.Pid)
+	for in.Scan() {
+		log.Printf(in.Text()) // write each line to your log, or anything you need
+	}
+	if err := in.Err(); err != nil {
+		log.Printf("error: %s", err)
+	}
+	return nil
 }
