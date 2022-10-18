@@ -1,8 +1,8 @@
 # giles
-
-A watcher of files and runner of multiple Go bianries
-
+The magical file watcher for ALL your local Go services.
+![giles](./giles.jpeg)
 I had the idea to create this to be like [nodemon](https://www.npmjs.com/package/nodemon) for multiple Go services running within a monorepo.
+The ultimate goal would be for this to be a CLI like nodemon and to read off a configuration file you point it to.
 
 ## Instructions
 ```go
