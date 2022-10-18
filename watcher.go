@@ -2,8 +2,9 @@ package giles
 
 import (
 	"bufio"
+	"go.uber.org/zap/zapcore"
 	"io"
-	"log"
+	syslog "log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -39,7 +40,28 @@ type watcher struct {
 	buildPath   string
 }
 
-func NewWatcher(rootPath string, l *zap.SugaredLogger) (*watcher, error) {
+func newZapLogger() (*zap.SugaredLogger, error) {
+	config := zap.NewProductionConfig()
+	config.OutputPaths = []string{"stdout"}
+	config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	config.DisableStacktrace = true
+	config.InitialFields = map[string]interface{}{
+		"service": "FILES-WATCHER",
+	}
+
+	log, err := config.Build()
+	if err != nil {
+		return nil, err
+	}
+
+	return log.Sugar(), nil
+}
+
+func NewWatcher(rootPath string) (*watcher, error) {
+	l, err := newZapLogger()
+	if err != nil {
+		return nil, err
+	}
 	buildpath := filepath.Join(rootPath, "./build.sh")
 	fileWatcher := filenotify.NewPollingWatcher()
 	w := watcher{
@@ -186,10 +208,10 @@ func (w *watcher) Run(binary string) error {
 	}
 	w.pids = append(w.pids, cmd.Process.Pid)
 	for in.Scan() {
-		log.Printf(in.Text()) // write each line to your log, or anything you need
+		syslog.Printf(in.Text()) // write each line to your log, or anything you need
 	}
 	if err := in.Err(); err != nil {
-		log.Printf("error: %s", err)
+		syslog.Printf("error: %s", err)
 	}
 	return nil
 }
