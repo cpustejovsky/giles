@@ -34,14 +34,13 @@ a rootPath to determine the tmp Service to build to
 type watcher struct {
 	fileWatcher filenotify.FileWatcher
 	pids        []int
-	logger      zap.SugaredLogger
+	logger      *zap.SugaredLogger
 	rootPath    string
 	buildPath   string
 }
 
-func New(rootPath string, l zap.SugaredLogger) (*watcher, error) {
-	buildpath := filepath.Join(rootPath, "bin/tmp_build_go_file.sh")
-
+func NewWatcher(rootPath string, l *zap.SugaredLogger) (*watcher, error) {
+	buildpath := filepath.Join(rootPath, "./build.sh")
 	fileWatcher := filenotify.NewPollingWatcher()
 	w := watcher{
 		fileWatcher: fileWatcher,
@@ -139,7 +138,7 @@ func (w *watcher) Start(services []Service) error {
 		path := service.Path
 		name := service.Name
 		rand := uuid.NewString()
-		args := []string{name, path, rand}
+		args := []string{path, name, rand}
 		go w.BuildAndRun(w.buildPath, args)
 
 	}
