@@ -2,7 +2,7 @@
 
 A watcher of files and runner of multiple Go bianries
 
-I had the idea to create this to be like [nodemon] for multiple Go services running within a monorepo.
+I had the idea to create this to be like [nodemon](https://www.npmjs.com/package/nodemon) for multiple Go services running within a monorepo.
 
 ## Instructions
 ```go
