@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 var rootPath string
@@ -35,18 +36,22 @@ var testServices = []testService{
 }
 
 func setUpTests() error {
-	for _, service := range testServices {
+	for i, service := range testServices {
 		err := exec.Command(filepath.Join(rootPath, "test_setup.sh"), service.name, service.port).Run()
 		if err != nil {
 			return err
 		}
-		service.path = filepath.Join(rootPath, fmt.Sprintf("/test/%v/main.go", service.name))
+		testServices[i].path = filepath.Join(rootPath, fmt.Sprintf("/test/%v", service.name))
 	}
 	return nil
 }
 
-func cleanUpTestDirectory() {
+func cleanUpTests() {
 	err := os.RemoveAll(filepath.Join(rootPath, "test"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = os.RemoveAll(filepath.Join(rootPath, "tmp/builds"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -78,16 +83,16 @@ func TestWatcher_AddPaths(t *testing.T) {
 		err := watcher.AddPaths([]string{filepath.Join(rootPath, "foobarbaz")})
 		assert.Error(t, err)
 	})
-	t.Cleanup(cleanUpTestDirectory)
+	t.Cleanup(cleanUpTests)
 }
 
 func TestWatcher_Start(t *testing.T) {
 	err := setUpTests()
 	assert.Nil(t, err)
-	watcher, err := giles.NewWatcher(rootPath)
-	assert.Nil(t, err)
-	defer watcher.Close()
 	t.Run("Run services without error", func(t *testing.T) {
+		watcher, err := giles.NewWatcher(rootPath)
+		assert.Nil(t, err)
+		defer watcher.Close()
 		var services []giles.Service
 		for _, service := range testServices {
 			services = append(services, giles.Service{
@@ -95,12 +100,23 @@ func TestWatcher_Start(t *testing.T) {
 				Path: service.path,
 			})
 		}
-		err := watcher.Start(services)
-		assert.Nil(t, err)
+		watcher.Start(services)
+		select {
+		case err := <-watcher.ErrorChan:
+			assert.Nil(t, err)
+		case <-time.After(50 * time.Millisecond):
+			return
+		}
 	})
 	t.Run("Run services with error", func(t *testing.T) {
-		err := watcher.Start([]giles.Service{{Name: "foobar", Path: "foobarbaz"}})
+		watcher, err := giles.NewWatcher(rootPath)
 		assert.Nil(t, err)
+		defer watcher.Close()
+		watcher.Start([]giles.Service{{Name: "foobar", Path: "foobarbaz"}})
+		select {
+		case err := <-watcher.ErrorChan:
+			assert.Error(t, err)
+		}
 	})
-	t.Cleanup(cleanUpTestDirectory)
+	t.Cleanup(cleanUpTests)
 }

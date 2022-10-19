@@ -38,6 +38,7 @@ type watcher struct {
 	logger      *zap.SugaredLogger
 	rootPath    string
 	buildPath   string
+	ErrorChan   chan error
 }
 
 func newZapLogger() (*zap.SugaredLogger, error) {
@@ -62,6 +63,7 @@ func NewWatcher(rootPath string) (*watcher, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	buildpath := filepath.Join(rootPath, "./build.sh")
 	fileWatcher := filenotify.NewPollingWatcher()
 	w := watcher{
@@ -70,6 +72,7 @@ func NewWatcher(rootPath string) (*watcher, error) {
 		logger:      l,
 		buildPath:   buildpath,
 		rootPath:    rootPath,
+		ErrorChan:   make(chan error),
 	}
 	return &w, nil
 }
@@ -152,25 +155,20 @@ func (w *watcher) Stop() error {
 }
 
 // Start ranges over a slice of Service and ranges over the Children of the Service, running BuildAndRun for each child in a goroutine
-func (w *watcher) Start(services []Service) error {
+func (w *watcher) Start(services []Service) {
 	for _, service := range services {
 		path := service.Path
 		name := service.Name
 		rand := uuid.NewString()
 		args := []string{path, name, rand}
-		go w.BuildAndRun(w.buildPath, args)
-
+		go func() {
+			binary, err := w.Build(w.buildPath, args)
+			if err != nil {
+				w.ErrorChan <- err
+			}
+			w.ErrorChan <- w.Run(binary)
+		}()
 	}
-	return nil
-}
-
-// BuildAndRun combines the Build and Run methods
-func (w *watcher) BuildAndRun(buildpath string, args []string) error {
-	binary, err := w.Build(buildpath, args)
-	if err != nil {
-		return err
-	}
-	return w.Run(binary)
 }
 
 // Build takes the buildpath to know what build script to run and any additional arguments to pass in
@@ -200,7 +198,6 @@ func (w *watcher) Run(binary string) error {
 	multi := io.MultiReader(stdout, stderr)
 	in := bufio.NewScanner(multi)
 	if err := cmd.Start(); err != nil {
-		w.logger.Error(err)
 		return err
 	}
 	w.pids = append(w.pids, cmd.Process.Pid)
