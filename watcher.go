@@ -85,13 +85,11 @@ It makes sure the path is a Service and then adds that Service to the embedded f
 */
 func (w *watcher) addPath(path string, info os.FileInfo, err error) error {
 	if err != nil {
-		w.logger.Error(err)
 		return err
 	}
 	if info.IsDir() {
 		err = w.fileWatcher.Add(path)
 		if err != nil {
-			w.logger.Error(err)
 			return err
 		}
 	}
@@ -103,7 +101,6 @@ func (w *watcher) AddPaths(paths []string) error {
 	for _, path := range paths {
 		err := filepath.Walk(path, w.addPath)
 		if err != nil {
-			w.logger.Errorw("Error adding paths to watcher", "message", err, "path", path)
 			return err
 		}
 	}
