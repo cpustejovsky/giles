@@ -53,18 +53,14 @@ func main() {
   //Start watching for file changes
   go w.Watch(services)
   //Start services
-  err = w.Start(services)
-  if err != nil {
-    err = os.RemoveAll(filepath.Join(root, "tmp/builds"))
+  w.Start(services)
+
+  select {
+  case err := <-w.ErrorChan:
     if err != nil {
       fmt.Println("Error\t", err)
       os.Exit(1)
     }
-    fmt.Println("Error\t", err)
-    os.Exit(1)
-  }
-
-  select {
   case sig := <-sigs:
     err = w.Stop()
     if err != nil {
@@ -85,7 +81,10 @@ func main() {
 
 ## Next Steps
 * ~~Add detailed instructions~~
-* Add error handling to Start, Restart, and Watch
+* Add error handling to:
+  * ~~Start~~
+  * Restart
+  * Watch
 * Make paths less brittle. 
   * If the `main.go` file resides inside `~/foo/bar/baz/`, giles should be able to run when it is only given `~/foo`
   * Have watcher return sentinel error if multiple `main.go`s are found in same path with suggestion to break up services
