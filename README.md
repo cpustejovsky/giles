@@ -9,24 +9,17 @@ The ultimate goal would be for this to be a CLI like nodemon and to read off a c
 package main
 
 import (
-  "fmt"
+  "log"
   "github.com/cpustejovsky/giles"
   "os"
   "os/signal"
-  "path/filepath"
   "syscall"
 )
 
 func main() {
   sigs := make(chan os.Signal, 1)
   signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-  root := filepath.Join(os.Getenv("YOUR_LOCAL_ROOT_PATH"))
-  w, err := giles.NewWatcher(root)
-  if err != nil {
-    fmt.Println("Error\t", err)
-    os.Exit(1)
-  }
-  defer w.Close()
+
   //Add services you want to start and restart based on file changes. 
   //the Name property will help you troubleshoot which service is having problems if giles encounters an error
   //the Path property tells giles what go file to build; it currently must point directly to the main.go file
@@ -40,39 +33,34 @@ func main() {
     Name: "service_three",
     Path: "path/to/service_three",
   }}
+  
+  w, err := giles.NewWatcher(services)
+  if err != nil {
+    log.Println("Error\t", err)
+    os.Exit(1)
+  }
+  defer w.Close()
 
   //Tell giles which paths to watch for file changes
-  pathOne := filepath.Join(root, "path/to/code/one")
-  pathTwo := filepath.Join(root, "path/to/code/two")
-  paths := []string{pathOne, pathTwo}
+  paths := []string{"path/to/code/one", "path/to/code/two"}
   err = w.AddPaths(paths)
   if err != nil {
-    fmt.Println("Error\t", err)
+    log.Println("Error\t", err)
     os.Exit(1)
   }  
   //Start watching for file changes
-  go w.Watch(services)
+  go w.Watch()
   //Start services
-  w.Start(services)
+  w.Start()
 
   select {
   case err := <-w.ErrorChan:
     if err != nil {
-      fmt.Println("Error\t", err)
+      log.Println("Error\t", err)
       os.Exit(1)
     }
   case sig := <-sigs:
-    err = w.Stop()
-    if err != nil {
-      fmt.Println("Error\t", err)
-      os.Exit(1)
-    }
-    err = os.RemoveAll(filepath.Join(root, "tmp/builds"))
-    if err != nil {
-      fmt.Println("Error\t", err)
-      os.Exit(1)
-    }
-    fmt.Println("Signal\t", sig)
+    log.Println("Signal\t", sig)
     os.Exit(0)
   }
 
@@ -83,8 +71,8 @@ func main() {
 * ~~Add detailed instructions~~
 * Add error handling to:
   * ~~Start~~
-  * Restart
   * Watch
+    * Make Watch a testable method
 * Make paths less brittle. 
   * If the `main.go` file resides inside `~/foo/bar/baz/`, giles should be able to run when it is only given `~/foo`
   * Have watcher return sentinel error if multiple `main.go`s are found in same path with suggestion to break up services
