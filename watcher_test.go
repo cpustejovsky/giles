@@ -1,12 +1,10 @@
 package giles_test
 
 import (
-	"fmt"
 	"github.com/cpustejovsky/giles"
 	"github.com/stretchr/testify/assert"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -35,23 +33,8 @@ var testServices = []testService{
 	},
 }
 
-func setUpTests() error {
-	for i, service := range testServices {
-		err := exec.Command(filepath.Join(rootPath, "test_setup.sh"), service.name, service.port).Run()
-		if err != nil {
-			return err
-		}
-		testServices[i].path = filepath.Join(rootPath, fmt.Sprintf("/test/%v", service.name))
-	}
-	return nil
-}
-
 func cleanUpTests() {
-	err := os.RemoveAll(filepath.Join(rootPath, "test"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = os.RemoveAll(filepath.Join(rootPath, "tmp/builds"))
+	err := os.RemoveAll(filepath.Join(rootPath, "tmp/builds"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -63,20 +46,15 @@ func init() {
 		log.Fatal(err)
 	}
 	rootPath = root
-	err = setUpTests()
-	if err != nil {
-		log.Fatal(err)
-	}
 }
 
 func TestWatcher_AddPaths(t *testing.T) {
-	err := setUpTests()
-	assert.Nil(t, err)
+
 	watcher, err := giles.NewWatcher(rootPath)
 	assert.Nil(t, err)
 	defer watcher.Close()
 	t.Run("Add existing directories to watch", func(t *testing.T) {
-		err := watcher.AddPaths([]string{filepath.Join(rootPath, "test")})
+		err := watcher.AddPaths([]string{filepath.Join(rootPath, ".test")})
 		assert.Nil(t, err)
 	})
 	t.Run("Add unknown directories to watch", func(t *testing.T) {
@@ -87,8 +65,6 @@ func TestWatcher_AddPaths(t *testing.T) {
 }
 
 func TestWatcher_Start(t *testing.T) {
-	err := setUpTests()
-	assert.Nil(t, err)
 	t.Run("Run services without error", func(t *testing.T) {
 		watcher, err := giles.NewWatcher(rootPath)
 		assert.Nil(t, err)
