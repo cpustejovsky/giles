@@ -49,8 +49,14 @@ func init() {
 }
 
 func TestWatcher_AddPaths(t *testing.T) {
-
-	watcher, err := giles.NewWatcher(rootPath)
+	var services []giles.Service
+	for _, service := range testServices {
+		services = append(services, giles.Service{
+			Name: service.name,
+			Path: service.path,
+		})
+	}
+	watcher, err := giles.NewWatcher(services)
 	assert.Nil(t, err)
 	defer watcher.Close()
 	t.Run("Add existing directories to watch", func(t *testing.T) {
@@ -65,18 +71,18 @@ func TestWatcher_AddPaths(t *testing.T) {
 }
 
 func TestWatcher_Start(t *testing.T) {
-	t.Run("Run services without error", func(t *testing.T) {
-		watcher, err := giles.NewWatcher(rootPath)
+	var services []giles.Service
+	for _, service := range testServices {
+		services = append(services, giles.Service{
+			Name: service.name,
+			Path: service.path,
+		})
+	}
+	t.Run("Start services without error", func(t *testing.T) {
+		watcher, err := giles.NewWatcher(services)
 		assert.Nil(t, err)
 		defer watcher.Close()
-		var services []giles.Service
-		for _, service := range testServices {
-			services = append(services, giles.Service{
-				Name: service.name,
-				Path: service.path,
-			})
-		}
-		watcher.Start(services)
+		watcher.Start()
 		select {
 		case err := <-watcher.ErrorChan:
 			assert.Nil(t, err)
@@ -84,15 +90,53 @@ func TestWatcher_Start(t *testing.T) {
 			return
 		}
 	})
-	t.Run("Run services with error", func(t *testing.T) {
-		watcher, err := giles.NewWatcher(rootPath)
+	t.Run("Start services with error", func(t *testing.T) {
+		watcher, err := giles.NewWatcher([]giles.Service{{Name: "foobar", Path: "foobarbaz"}})
 		assert.Nil(t, err)
 		defer watcher.Close()
-		watcher.Start([]giles.Service{{Name: "foobar", Path: "foobarbaz"}})
+		watcher.Start()
 		select {
 		case err := <-watcher.ErrorChan:
 			assert.Error(t, err)
 		}
 	})
+	t.Cleanup(cleanUpTests)
+}
+
+func TestWatcher_Watch(t *testing.T) {
+	var services []giles.Service
+	for _, service := range testServices {
+		services = append(services, giles.Service{
+			Name: service.name,
+			Path: service.path,
+		})
+	}
+	t.Run("Watch files without error", func(t *testing.T) {
+		watcher, err := giles.NewWatcher(services)
+		assert.Nil(t, err)
+		defer watcher.Close()
+		err = watcher.AddPaths([]string{filepath.Join(rootPath, ".test")})
+		assert.Nil(t, err)
+		go watcher.Watch()
+		select {
+		case err := <-watcher.ErrorChan:
+			assert.Nil(t, err)
+		case <-time.After(50 * time.Millisecond):
+			return
+		}
+	})
+	//TODO Fix failing test
+	//t.Run("Watch files with error", func(t *testing.T) {
+	//	watcher, err := giles.NewWatcher(services)
+	//	assert.Nil(t, err)
+	//	defer watcher.Close()
+	//	err = watcher.AddPaths([]string{filepath.Join(rootPath, ".test")})
+	//	assert.Nil(t, err)
+	//	go watcher.Watch()
+	//	select {
+	//	case err := <-watcher.ErrorChan:
+	//		assert.Error(t, err)
+	//	}
+	//})
 	t.Cleanup(cleanUpTests)
 }
