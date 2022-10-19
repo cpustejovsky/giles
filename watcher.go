@@ -55,8 +55,17 @@ func NewWatcher(services []Service) (*watcher, error) {
 	return &w, nil
 }
 
-// Close wraps fileWatcher.Close
+// Close removes tmp builds directory and closes embedded filewatcher
 func (w *watcher) Close() error {
+	wd, err := os.Getwd()
+	err = os.RemoveAll(filepath.Join(wd, "tmp"))
+	if err != nil {
+		return err
+	}
+	err = w.Stop()
+	if err != nil {
+		return err
+	}
 	return w.fileWatcher.Close()
 }
 
