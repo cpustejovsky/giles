@@ -34,9 +34,9 @@ a rootPath to determine the tmp Service to build to
 */
 type watcher struct {
 	fileWatcher filenotify.FileWatcher
+	services    []Service
 	pids        []int
 	logger      *zap.SugaredLogger
-	rootPath    string
 	buildPath   string
 	ErrorChan   chan error
 }
@@ -58,20 +58,23 @@ func newZapLogger() (*zap.SugaredLogger, error) {
 	return log.Sugar(), nil
 }
 
-func NewWatcher(rootPath string) (*watcher, error) {
+func NewWatcher(services []Service) (*watcher, error) {
 	l, err := newZapLogger()
 	if err != nil {
 		return nil, err
 	}
-
-	buildpath := filepath.Join(rootPath, "./build.sh")
+	wd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	buildpath := filepath.Join(wd, "./build.sh")
 	fileWatcher := filenotify.NewPollingWatcher()
 	w := watcher{
+		services:    services,
 		fileWatcher: fileWatcher,
 		pids:        []int{},
 		logger:      l,
 		buildPath:   buildpath,
-		rootPath:    rootPath,
 		ErrorChan:   make(chan error),
 	}
 	return &w, nil
@@ -111,30 +114,32 @@ func (w *watcher) AddPaths(paths []string) error {
 }
 
 // Watch watches for Events from the embedded fileWatcher and runs Restart
-func (w *watcher) Watch(services []Service) {
+func (w *watcher) Watch() {
 	for {
 		select {
 		case _, ok := <-w.fileWatcher.Events():
+			//TODO: determine if these !ok returns should have specific errors
 			if !ok {
 				return
 			}
-			w.Restart(services)
+			w.Restart()
 		case err, ok := <-w.fileWatcher.Errors():
 			if !ok {
 				return
 			}
-			w.logger.Error("error: ", err)
+			w.ErrorChan <- err
 		}
 	}
 }
 
 // Restart runs Stop then Start
-func (w *watcher) Restart(services []Service) {
+func (w *watcher) Restart() {
 	err := w.Stop()
 	if err != nil {
-		w.logger.Error("Error: ", err)
+		w.ErrorChan <- err
+		return
 	}
-	w.Start(services)
+	w.Start()
 }
 
 // Stop ranges over the pids that Run adds to the watcher and kills each process. it then empties the pid slice
@@ -155,8 +160,8 @@ func (w *watcher) Stop() error {
 }
 
 // Start ranges over a slice of Service and ranges over the Children of the Service, running BuildAndRun for each child in a goroutine
-func (w *watcher) Start(services []Service) {
-	for _, service := range services {
+func (w *watcher) Start() {
+	for _, service := range w.services {
 		path := service.Path
 		name := service.Name
 		rand := uuid.NewString()
@@ -175,7 +180,6 @@ func (w *watcher) Start(services []Service) {
 func (w *watcher) Build(buildpath string, args []string) (string, error) {
 	output, err := exec.Command(buildpath, args...).Output()
 	if err != nil {
-		w.logger.Error(err)
 		return "", err
 	}
 	binary := strings.TrimSpace(string(output))
