@@ -2,9 +2,8 @@ package giles
 
 import (
 	"bufio"
-	"go.uber.org/zap/zapcore"
 	"io"
-	syslog "log"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,7 +11,6 @@ import (
 
 	"github.com/Docker/docker/pkg/filenotify"
 	"github.com/google/uuid"
-	"go.uber.org/zap"
 )
 
 // Service provides us with a Name to use to identify the service when it's binary is built and run along with the path that it will run
@@ -36,33 +34,11 @@ type watcher struct {
 	fileWatcher filenotify.FileWatcher
 	services    []Service
 	pids        []int
-	logger      *zap.SugaredLogger
 	buildPath   string
 	ErrorChan   chan error
 }
 
-func newZapLogger() (*zap.SugaredLogger, error) {
-	config := zap.NewProductionConfig()
-	config.OutputPaths = []string{"stdout"}
-	config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	config.DisableStacktrace = true
-	config.InitialFields = map[string]interface{}{
-		"service": "FILES-WATCHER",
-	}
-
-	log, err := config.Build()
-	if err != nil {
-		return nil, err
-	}
-
-	return log.Sugar(), nil
-}
-
 func NewWatcher(services []Service) (*watcher, error) {
-	l, err := newZapLogger()
-	if err != nil {
-		return nil, err
-	}
 	wd, err := os.Getwd()
 	if err != nil {
 		return nil, err
@@ -73,7 +49,6 @@ func NewWatcher(services []Service) (*watcher, error) {
 		services:    services,
 		fileWatcher: fileWatcher,
 		pids:        []int{},
-		logger:      l,
 		buildPath:   buildpath,
 		ErrorChan:   make(chan error),
 	}
@@ -153,7 +128,7 @@ func (w *watcher) Stop() error {
 		if err != nil {
 			return err
 		}
-		w.logger.Infow("PID Killed", "PID", pid)
+		log.Printf("PID Killed:\t%v\n", pid)
 	}
 	w.pids = []int{}
 	return nil
@@ -191,12 +166,10 @@ func (w *watcher) Run(binary string) error {
 	cmd := exec.Command(binary)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		w.logger.Error(err)
 		return err
 	}
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		w.logger.Error(err)
 		return err
 	}
 	multi := io.MultiReader(stdout, stderr)
@@ -206,10 +179,10 @@ func (w *watcher) Run(binary string) error {
 	}
 	w.pids = append(w.pids, cmd.Process.Pid)
 	for in.Scan() {
-		syslog.Printf(in.Text()) // write each line to your log, or anything you need
+		log.Printf(in.Text()) // write each line to your log, or anything you need
 	}
 	if err := in.Err(); err != nil {
-		syslog.Printf("error: %s", err)
+		log.Printf("error: %s", err)
 	}
 	return nil
 }
