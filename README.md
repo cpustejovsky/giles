@@ -78,8 +78,7 @@ func main() {
   * Have watcher return sentinel error if multiple `main.go`s are found in same path with suggestion to break up services
 * Add short-circuit for too many file changes (like when a different branch is checked out in git)
   * Potentially having a configurable time to wait before restarting again
-* Graceful shutdown within giles
-  * Handle tmp file cleanup within giles
+* ~~Graceful shutdown within giles~~
+  * ~~Handle tmp file cleanup within giles~~
 * Configurable restarts based on which files changes
   * If the go binary is in the same directory as a file change
-* 

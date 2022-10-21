@@ -22,22 +22,18 @@ var testServices = []testService{
 	{
 		name: "one",
 		port: "8001",
+		path: "./.test/one/main.go",
 	},
 	{
 		name: "two",
 		port: "8002",
+		path: "./.test/two/main.go",
 	},
 	{
 		name: "three",
 		port: "8003",
+		path: "./.test/three/main.go",
 	},
-}
-
-func cleanUpTests() {
-	err := os.RemoveAll(filepath.Join(rootPath, "tmp/builds"))
-	if err != nil {
-		log.Fatal(err)
-	}
 }
 
 func init() {
@@ -67,7 +63,6 @@ func TestWatcher_AddPaths(t *testing.T) {
 		err := watcher.AddPaths([]string{filepath.Join(rootPath, "foobarbaz")})
 		assert.Error(t, err)
 	})
-	t.Cleanup(cleanUpTests)
 }
 
 func TestWatcher_Start(t *testing.T) {
@@ -100,7 +95,6 @@ func TestWatcher_Start(t *testing.T) {
 			assert.Error(t, err)
 		}
 	})
-	t.Cleanup(cleanUpTests)
 }
 
 func TestWatcher_Watch(t *testing.T) {
@@ -138,5 +132,4 @@ func TestWatcher_Watch(t *testing.T) {
 	//		assert.Error(t, err)
 	//	}
 	//})
-	t.Cleanup(cleanUpTests)
 }
