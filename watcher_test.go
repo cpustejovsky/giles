@@ -22,17 +22,17 @@ var testServices = []testService{
 	{
 		name: "one",
 		port: "8001",
-		path: "./.test/one/main.go",
+		path: "./test/one/main.go",
 	},
 	{
 		name: "two",
 		port: "8002",
-		path: "./.test/two/main.go",
+		path: "./test/two/main.go",
 	},
 	{
 		name: "three",
 		port: "8003",
-		path: "./.test/three/main.go",
+		path: "./test/three/main.go",
 	},
 }
 
@@ -56,7 +56,7 @@ func TestWatcher_AddPaths(t *testing.T) {
 	assert.Nil(t, err)
 	defer watcher.Close()
 	t.Run("Add existing directories to watch", func(t *testing.T) {
-		err := watcher.AddPaths([]string{filepath.Join(rootPath, ".test")})
+		err := watcher.AddPaths([]string{filepath.Join(rootPath, "test")})
 		assert.Nil(t, err)
 	})
 	t.Run("Add unknown directories to watch", func(t *testing.T) {
@@ -109,7 +109,7 @@ func TestWatcher_Watch(t *testing.T) {
 		watcher, err := giles.NewWatcher(services)
 		assert.Nil(t, err)
 		defer watcher.Close()
-		err = watcher.AddPaths([]string{filepath.Join(rootPath, ".test")})
+		err = watcher.AddPaths([]string{filepath.Join(rootPath, "test")})
 		assert.Nil(t, err)
 		go watcher.Watch()
 		select {
@@ -120,11 +120,11 @@ func TestWatcher_Watch(t *testing.T) {
 		}
 	})
 	//TODO Fix failing test
-	//t.Run("Watch files with error", func(t *testing.T) {
+	//t.run("Watch files with error", func(t *testing.T) {
 	//	watcher, err := giles.NewWatcher(services)
 	//	assert.Nil(t, err)
 	//	defer watcher.Close()
-	//	err = watcher.AddPaths([]string{filepath.Join(rootPath, ".test")})
+	//	err = watcher.AddPaths([]string{filepath.Join(rootPath, "test")})
 	//	assert.Nil(t, err)
 	//	go watcher.Watch()
 	//	select {
