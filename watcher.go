@@ -63,7 +63,7 @@ func (w *watcher) Close() error {
 	if err != nil {
 		return err
 	}
-	err = w.Stop()
+	err = w.stop()
 	if err != nil {
 		return err
 	}
@@ -98,7 +98,7 @@ func (w *watcher) AddPaths(paths []string) error {
 	return nil
 }
 
-// Watch watches for Events from the embedded fileWatcher and runs Restart
+// Watch watches for Events from the embedded fileWatcher and runs restart
 func (w *watcher) Watch() {
 	for {
 		select {
@@ -107,7 +107,7 @@ func (w *watcher) Watch() {
 			if !ok {
 				return
 			}
-			w.Restart()
+			w.restart()
 		case err, ok := <-w.fileWatcher.Errors():
 			if !ok {
 				return
@@ -117,9 +117,9 @@ func (w *watcher) Watch() {
 	}
 }
 
-// Restart runs Stop then Start
-func (w *watcher) Restart() {
-	err := w.Stop()
+// restart runs stop then Start
+func (w *watcher) restart() {
+	err := w.stop()
 	if err != nil {
 		w.ErrorChan <- err
 		return
@@ -127,8 +127,8 @@ func (w *watcher) Restart() {
 	w.Start()
 }
 
-// Stop ranges over the pids that Run adds to the watcher and kills each process. it then empties the pid slice
-func (w *watcher) Stop() error {
+// stop ranges over the pids that run adds to the watcher and kills each process. it then empties the pid slice
+func (w *watcher) stop() error {
 	for _, pid := range w.pids {
 		proc, err := os.FindProcess(pid)
 		if err != nil {
@@ -152,17 +152,17 @@ func (w *watcher) Start() {
 		randomNumber := rand.Intn(100)
 		args := []string{path, name, strconv.Itoa(randomNumber)}
 		go func() {
-			binary, err := w.Build(w.buildPath, args)
+			binary, err := w.build(w.buildPath, args)
 			if err != nil {
 				w.ErrorChan <- err
 			}
-			w.ErrorChan <- w.Run(binary)
+			w.ErrorChan <- w.run(binary)
 		}()
 	}
 }
 
-// Build takes the buildpath to know what build script to run and any additional arguments to pass in
-func (w *watcher) Build(buildpath string, args []string) (string, error) {
+// build takes the buildpath to know what build script to run and any additional arguments to pass in
+func (w *watcher) build(buildpath string, args []string) (string, error) {
 	output, err := exec.Command(buildpath, args...).Output()
 	if err != nil {
 		return "", err
@@ -171,8 +171,8 @@ func (w *watcher) Build(buildpath string, args []string) (string, error) {
 	return binary, nil
 }
 
-// Run creates a command from the binary path provided, sets up stdout and stderr, starts the command, and appends the process's Pid
-func (w *watcher) Run(binary string) error {
+// run creates a command from the binary path provided, sets up stdout and stderr, starts the command, and appends the process's Pid
+func (w *watcher) run(binary string) error {
 	cmd := exec.Command(binary)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
