@@ -2,6 +2,7 @@ package giles
 
 import (
 	"bufio"
+	"errors"
 	"io"
 	"log"
 	"math/rand"
@@ -164,8 +165,9 @@ func (w *watcher) Start() {
 // build takes the buildpath to know what build script to run and any additional arguments to pass in
 func (w *watcher) build(buildpath string, args []string) (string, error) {
 	output, err := exec.Command(buildpath, args...).Output()
+
 	if err != nil {
-		return "", err
+		return "", errors.New(string(output))
 	}
 	binary := strings.TrimSpace(string(output))
 	return binary, nil
