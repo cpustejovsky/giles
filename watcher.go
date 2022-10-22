@@ -4,13 +4,14 @@ import (
 	"bufio"
 	"io"
 	"log"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/Docker/docker/pkg/filenotify"
-	"github.com/google/uuid"
 )
 
 // Service provides us with a Name to use to identify the service when it's binary is built and run along with the path that it will run
@@ -148,8 +149,8 @@ func (w *watcher) Start() {
 	for _, service := range w.services {
 		path := service.Path
 		name := service.Name
-		rand := uuid.NewString()
-		args := []string{path, name, rand}
+		randomNumber := rand.Intn(100)
+		args := []string{path, name, strconv.Itoa(randomNumber)}
 		go func() {
 			binary, err := w.Build(w.buildPath, args)
 			if err != nil {
