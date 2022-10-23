@@ -22,17 +22,17 @@ var testServices = []testService{
 	{
 		name: "one",
 		port: "8001",
-		path: "./test/one/main.go",
+		path: "./test/one",
 	},
 	{
 		name: "two",
 		port: "8002",
-		path: "./test/two/main.go",
+		path: "./test/two",
 	},
 	{
 		name: "three",
 		port: "8003",
-		path: "./test/three/main.go",
+		path: "./test/three",
 	},
 }
 
@@ -42,6 +42,23 @@ func init() {
 		log.Fatal(err)
 	}
 	rootPath = root
+}
+
+func TestWatcher_Close(t *testing.T) {
+	var services []giles.Service
+	for _, service := range testServices {
+		services = append(services, giles.Service{
+			Name: service.name,
+			Path: service.path,
+		})
+	}
+	t.Run("Watcher closes without error", func(t *testing.T) {
+		watcher, err := giles.NewWatcher(services)
+		assert.Nil(t, err)
+		watcher.Start()
+		err = watcher.Close()
+		assert.Nil(t, err)
+	})
 }
 
 func TestWatcher_AddPaths(t *testing.T) {

@@ -3,6 +3,7 @@ package giles
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"math/rand"
@@ -60,13 +61,16 @@ func NewWatcher(services []Service) (*watcher, error) {
 // Close removes tmp builds directory and closes embedded filewatcher
 func (w *watcher) Close() error {
 	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("Error getting working directory:\t %v", err)
+	}
 	err = os.RemoveAll(filepath.Join(wd, "tmp"))
 	if err != nil {
-		return err
+		return fmt.Errorf("Error removing temp directory:\t %v", err)
 	}
 	err = w.stop()
 	if err != nil {
-		return err
+		return fmt.Errorf("Error killing PIDS:\t %v", err)
 	}
 	return w.fileWatcher.Close()
 }

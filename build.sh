@@ -1,6 +1,6 @@
 #!/bin/bash
 mkdir -p ./tmp/builds/
-chmod +x ./tmp/builds/
+chmod +777 ./tmp/builds/
 outputName=./tmp/builds/"$2"-"$3"
 go build -o "$outputName" "$1"
 if [ "$?" == 1 ];
