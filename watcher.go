@@ -53,26 +53,27 @@ func NewWatcher(services []Service) (*watcher, error) {
 		fileWatcher: fileWatcher,
 		pids:        []int{},
 		buildPath:   buildpath,
-		ErrorChan:   make(chan error),
+		ErrorChan:   make(chan error, 3),
 	}
 	return &w, nil
 }
 
 // Close removes tmp builds directory and closes embedded filewatcher
 func (w *watcher) Close() error {
+	defer w.fileWatcher.Close()
 	wd, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("Error getting working directory:\t %v", err)
+		return fmt.Errorf("error getting working directory:\t %v", err)
 	}
 	err = os.RemoveAll(filepath.Join(wd, "tmp"))
 	if err != nil {
-		return fmt.Errorf("Error removing temp directory:\t %v", err)
+		return fmt.Errorf("error removing temp directory:\t %v", err)
 	}
 	err = w.stop()
 	if err != nil {
-		return fmt.Errorf("Error killing PIDS:\t %v", err)
+		return fmt.Errorf("error killing PIDS:\t %v", err)
 	}
-	return w.fileWatcher.Close()
+	return nil
 }
 
 /*
@@ -141,6 +142,7 @@ func (w *watcher) stop() error {
 		}
 		err = proc.Kill()
 		if err != nil {
+			log.Printf("error killing process %v:\t%v\n", pid, err)
 			return err
 		}
 		log.Printf("PID Killed:\t%v\n", pid)
@@ -157,17 +159,21 @@ func (w *watcher) Start() {
 		randomNumber := rand.Intn(100)
 		args := []string{path, name, strconv.Itoa(randomNumber)}
 		go func() {
-			binary, err := w.build(w.buildPath, args)
-			if err != nil {
-				w.ErrorChan <- err
-			}
-			w.ErrorChan <- w.run(binary)
+			w.ErrorChan <- w.buildAndRun(w.buildPath, args)
 		}()
 	}
 }
 
+func (w *watcher) buildAndRun(buildpath string, args []string) error {
+	binary, err := build(buildpath, args)
+	if err != nil {
+		return err
+	}
+	return w.run(binary)
+}
+
 // build takes the buildpath to know what build script to run and any additional arguments to pass in
-func (w *watcher) build(buildpath string, args []string) (string, error) {
+func build(buildpath string, args []string) (string, error) {
 	output, err := exec.Command(buildpath, args...).Output()
 
 	if err != nil {
