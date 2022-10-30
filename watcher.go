@@ -34,11 +34,11 @@ a logger of type zap.SugaredLogger
 a rootPath to determine the tmp Service to build to
 */
 type watcher struct {
-	fileWatcher filenotify.FileWatcher
-	services    []Service
-	pids        []int
-	buildPath   string
-	ErrorChan   chan error
+	filenotify.FileWatcher
+	services  []Service
+	buildPath string
+	pids      []int
+	ErrorChan chan error
 }
 
 func NewWatcher(filePath string) (*watcher, error) {
@@ -47,10 +47,9 @@ func NewWatcher(filePath string) (*watcher, error) {
 		return nil, err
 	}
 	buildpath := filepath.Join(wd, "./build.sh")
-	fileWatcher := filenotify.NewPollingWatcher()
 	w := watcher{
 		services:    []Service{},
-		fileWatcher: fileWatcher,
+		FileWatcher: filenotify.NewPollingWatcher(),
 		pids:        []int{},
 		buildPath:   buildpath,
 		ErrorChan:   make(chan error, 3),
@@ -62,9 +61,9 @@ func NewWatcher(filePath string) (*watcher, error) {
 	return &w, nil
 }
 
-// Close removes tmp builds directory and closes embedded filewatcher
-func (w *watcher) Close() error {
-	defer w.fileWatcher.Close()
+// CloseWatcher removes tmp builds directory and closes embedded filewatcher
+func (w *watcher) CloseWatcher() error {
+	defer w.Close()
 	wd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("error getting working directory:\t %v", err)
@@ -73,7 +72,6 @@ func (w *watcher) Close() error {
 	if err != nil {
 		return fmt.Errorf("error removing temp directory:\t %v", err)
 	}
-	err = w.stop()
 	if err != nil {
 		return fmt.Errorf("error killing PIDS:\t %v", err)
 	}
@@ -89,7 +87,7 @@ func (w *watcher) addPathWalkFunc(path string, info os.FileInfo, err error) erro
 		return err
 	}
 	if info.IsDir() {
-		err = w.fileWatcher.Add(path)
+		err = w.Add(path)
 		if err != nil {
 			return err
 		}
@@ -106,13 +104,13 @@ func (w *watcher) addPath(path string) error {
 func (w *watcher) Watch() {
 	for {
 		select {
-		case _, ok := <-w.fileWatcher.Events():
+		case _, ok := <-w.Events():
 			//TODO: determine if these !ok returns should have specific errors
 			if !ok {
 				return
 			}
 			w.restart()
-		case err, ok := <-w.fileWatcher.Errors():
+		case err, ok := <-w.Errors():
 			if !ok {
 				return
 			}
