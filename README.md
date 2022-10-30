@@ -5,6 +5,21 @@ I had the idea to create this to be like [nodemon](https://www.npmjs.com/package
 The ultimate goal would be for this to be a CLI like nodemon and to read off a configuration file you point it to.
 
 ## Instructions
+First create a yaml file like so:
+```yaml
+services:
+  - name: one
+    path: /home/cpustejovsky/go/src/giles/test/one
+  - name: two
+    path: /home/cpustejovsky/go/src/giles/test/two
+  - name: three
+    path: /home/cpustejovsky/go/src/giles/test/three
+paths:
+  - /home/cpustejovsky/go/src/giles/test
+  - /home/cpustejovsky/go/src/franz
+```
+
+Then set up a main file to run the watcher
 ```go
 package main
 
@@ -19,35 +34,15 @@ import (
 func main() {
   sigs := make(chan os.Signal, 1)
   signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
-  //Add services you want to start and restart based on file changes. 
-  //the Name property will help you troubleshoot which service is having problems if giles encounters an error
-  //the Path property tells giles what go file to build; it currently must point directly to the main.go file
-  services := []giles.Service{{
-    Name: "service_one",
-    Path: "path/to/service_one",
-  }, {
-    Name: "service_two",
-    Path: "path/to/service_two",
-  }, {
-    Name: "service_three",
-    Path: "path/to/service_three",
-  }}
   
-  w, err := giles.NewWatcher(services)
+  //pass in path to configuration yaml file
+  w, err := giles.NewWatcher("path/to/your/config.yaml")
   if err != nil {
     log.Println("Error\t", err)
     os.Exit(1)
   }
   defer w.Close()
-
-  //Tell giles which paths to watch for file changes
-  paths := []string{"path/to/code/one", "path/to/code/two"}
-  err = w.AddPaths(paths)
-  if err != nil {
-    log.Println("Error\t", err)
-    os.Exit(1)
-  }  
+  
   //Start watching for file changes
   go w.Watch()
   //Start services
@@ -71,6 +66,9 @@ func main() {
 * ~~Add detailed instructions~~
 * ~~Graceful shutdown within giles~~
   * ~~Handle tmp file cleanup within giles~~
+* ~~Read from yaml config file for services and paths to watch~~
+* Add finer-grained error handling
+  * Specific errors from read method
 * Add error handling to:
   * ~~Start~~
   * Watch
