@@ -14,24 +14,20 @@ var rootPath string
 
 type testService struct {
 	name string
-	port string
 	path string
 }
 
 var testServices = []testService{
 	{
 		name: "one",
-		port: "8001",
 		path: "./test/one",
 	},
 	{
 		name: "two",
-		port: "8002",
 		path: "./test/two",
 	},
 	{
 		name: "three",
-		port: "8003",
 		path: "./test/three",
 	},
 }
