@@ -1,0 +1,10 @@
+services:
+  - name: one
+    path: /home/cpustejovsky/go/src/giles/test/one
+  - name: two
+    path: /home/cpustejovsky/go/src/giles/test/two
+  - name: three
+    path: /home/cpustejovsky/go/src/giles/test/three
+paths:
+  - /home/cpustejovsky/go/src/giles/test
+  - /home/cpustejovsky/go/src/franz

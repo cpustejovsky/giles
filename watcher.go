@@ -41,7 +41,7 @@ type watcher struct {
 	ErrorChan   chan error
 }
 
-func NewWatcher(services []Service) (*watcher, error) {
+func NewWatcher(filePath string) (*watcher, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return nil, err
@@ -49,11 +49,15 @@ func NewWatcher(services []Service) (*watcher, error) {
 	buildpath := filepath.Join(wd, "./build.sh")
 	fileWatcher := filenotify.NewPollingWatcher()
 	w := watcher{
-		services:    services,
+		services:    []Service{},
 		fileWatcher: fileWatcher,
 		pids:        []int{},
 		buildPath:   buildpath,
 		ErrorChan:   make(chan error, 3),
+	}
+	err = w.read(filePath)
+	if err != nil {
+		return nil, err
 	}
 	return &w, nil
 }
@@ -94,19 +98,8 @@ func (w *watcher) addPathWalkFunc(path string, info os.FileInfo, err error) erro
 }
 
 // AddPaths takes the paths provided and walks through them all to make sure all files contained within are watched
-func (w *watcher) AddPath(path string) error {
+func (w *watcher) addPath(path string) error {
 	return filepath.Walk(path, w.addPathWalkFunc)
-}
-
-// AddPaths takes the paths provided and walks through them all to make sure all files contained within are watched
-func (w *watcher) AddPaths(paths []string) error {
-	for _, path := range paths {
-		err := w.AddPath(path)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // Watch watches for Events from the embedded fileWatcher and runs restart

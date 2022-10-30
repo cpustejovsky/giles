@@ -1,0 +1,7 @@
+services:
+  - name: foobar
+    path: foo/bar/baz
+
+paths:
+  - /home/cpustejovsky/go/src/giles/test
+  - /home/cpustejovsky/go/src/franz
