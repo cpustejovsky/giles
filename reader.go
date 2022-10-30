@@ -8,9 +8,10 @@ import (
 	"regexp"
 )
 
-func (w *watcher) Read(filepath string) error {
+func (w *watcher) read(filepath string) error {
 	match, err := regexp.MatchString(".*\\.yaml$", filepath)
 	if err != nil {
+		fmt.Println(err)
 		return err
 	}
 	if !match {
@@ -36,7 +37,7 @@ func (w *watcher) Read(filepath string) error {
 			}
 			for _, path := range paths {
 				fmt.Println("PATH", path)
-				err = w.AddPath(path.(string))
+				err = w.addPath(path.(string))
 				if err != nil {
 					return err
 				}
@@ -61,6 +62,5 @@ func (w *watcher) Read(filepath string) error {
 			}
 		}
 	}
-
 	return nil
 }

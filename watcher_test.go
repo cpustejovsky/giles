@@ -11,6 +11,8 @@ import (
 )
 
 var rootPath string
+var configFilePath string
+var badConfigFilePath string
 
 type testService struct {
 	name string
@@ -38,18 +40,38 @@ func init() {
 		log.Fatal(err)
 	}
 	rootPath = root
+	configFilePath = filepath.Join(root, "./test/config.yaml")
+	badConfigFilePath = filepath.Join(root, "./test/badconfig.yaml")
+}
+
+func TestNewWatcher(t *testing.T) {
+	wd, err := os.Getwd()
+	assert.Nil(t, err)
+	yamlLocation := filepath.Join(wd, "./test/test.yaml")
+	t.Run("returns ar error if .yaml is not at end of file path", func(t *testing.T) {
+		watcher, err := giles.NewWatcher("foo/bar.json")
+		assert.Error(t, err)
+		if watcher != nil {
+			watcher.Close()
+		}
+	})
+	t.Run("returns error if file path not found", func(t *testing.T) {
+		watcher, err := giles.NewWatcher("foo/bar.yaml")
+		assert.Error(t, err)
+		if watcher != nil {
+			watcher.Close()
+		}
+	})
+	t.Run("returns no error if file path is found", func(t *testing.T) {
+		watcher, err := giles.NewWatcher(yamlLocation)
+		assert.Nil(t, err)
+		defer watcher.Close()
+	})
 }
 
 func TestWatcher_Close(t *testing.T) {
-	var services []giles.Service
-	for _, service := range testServices {
-		services = append(services, giles.Service{
-			Name: service.name,
-			Path: service.path,
-		})
-	}
 	t.Run("Watcher closes without error", func(t *testing.T) {
-		watcher, err := giles.NewWatcher(services)
+		watcher, err := giles.NewWatcher(configFilePath)
 		assert.Nil(t, err)
 		watcher.Start()
 		err = watcher.Close()
@@ -57,37 +79,9 @@ func TestWatcher_Close(t *testing.T) {
 	})
 }
 
-func TestWatcher_AddPaths(t *testing.T) {
-	var services []giles.Service
-	for _, service := range testServices {
-		services = append(services, giles.Service{
-			Name: service.name,
-			Path: service.path,
-		})
-	}
-	watcher, err := giles.NewWatcher(services)
-	assert.Nil(t, err)
-	defer watcher.Close()
-	t.Run("Add existing directories to watch", func(t *testing.T) {
-		err := watcher.AddPaths([]string{filepath.Join(rootPath, "test")})
-		assert.Nil(t, err)
-	})
-	t.Run("Add unknown directories to watch", func(t *testing.T) {
-		err := watcher.AddPaths([]string{filepath.Join(rootPath, "foobarbaz")})
-		assert.Error(t, err)
-	})
-}
-
 func TestWatcher_Start(t *testing.T) {
-	var services []giles.Service
-	for _, service := range testServices {
-		services = append(services, giles.Service{
-			Name: service.name,
-			Path: service.path,
-		})
-	}
 	t.Run("Start services without error", func(t *testing.T) {
-		watcher, err := giles.NewWatcher(services)
+		watcher, err := giles.NewWatcher(configFilePath)
 		assert.Nil(t, err)
 		defer watcher.Close()
 		watcher.Start()
@@ -99,7 +93,7 @@ func TestWatcher_Start(t *testing.T) {
 		}
 	})
 	t.Run("Start services with error", func(t *testing.T) {
-		watcher, err := giles.NewWatcher([]giles.Service{{Name: "foobar", Path: "foobarbaz"}})
+		watcher, err := giles.NewWatcher(badConfigFilePath)
 		assert.Nil(t, err)
 		defer watcher.Close()
 		watcher.Start()
@@ -111,19 +105,10 @@ func TestWatcher_Start(t *testing.T) {
 }
 
 func TestWatcher_Watch(t *testing.T) {
-	var services []giles.Service
-	for _, service := range testServices {
-		services = append(services, giles.Service{
-			Name: service.name,
-			Path: service.path,
-		})
-	}
 	t.Run("Watch files without error", func(t *testing.T) {
-		watcher, err := giles.NewWatcher(services)
+		watcher, err := giles.NewWatcher(configFilePath)
 		assert.Nil(t, err)
 		defer watcher.Close()
-		err = watcher.AddPaths([]string{filepath.Join(rootPath, "test")})
-		assert.Nil(t, err)
 		go watcher.Watch()
 		select {
 		case err := <-watcher.ErrorChan:
@@ -132,17 +117,4 @@ func TestWatcher_Watch(t *testing.T) {
 			return
 		}
 	})
-	//TODO Fix failing test
-	//t.run("Watch files with error", func(t *testing.T) {
-	//	watcher, err := giles.NewWatcher(services)
-	//	assert.Nil(t, err)
-	//	defer watcher.Close()
-	//	err = watcher.AddPaths([]string{filepath.Join(rootPath, "test")})
-	//	assert.Nil(t, err)
-	//	go watcher.Watch()
-	//	select {
-	//	case err := <-watcher.ErrorChan:
-	//		assert.Error(t, err)
-	//	}
-	//})
 }
