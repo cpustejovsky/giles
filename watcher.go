@@ -77,10 +77,10 @@ func (w *watcher) Close() error {
 }
 
 /*
-addPath is the WalkFunc used in AddPaths
+addPathWalkFunc is the WalkFunc used in AddPaths
 It makes sure the path is a Service and then adds that Service to the embedded fileWatcher
 */
-func (w *watcher) addPath(path string, info os.FileInfo, err error) error {
+func (w *watcher) addPathWalkFunc(path string, info os.FileInfo, err error) error {
 	if err != nil {
 		return err
 	}
@@ -94,9 +94,14 @@ func (w *watcher) addPath(path string, info os.FileInfo, err error) error {
 }
 
 // AddPaths takes the paths provided and walks through them all to make sure all files contained within are watched
+func (w *watcher) AddPath(path string) error {
+	return filepath.Walk(path, w.addPathWalkFunc)
+}
+
+// AddPaths takes the paths provided and walks through them all to make sure all files contained within are watched
 func (w *watcher) AddPaths(paths []string) error {
 	for _, path := range paths {
-		err := filepath.Walk(path, w.addPath)
+		err := w.AddPath(path)
 		if err != nil {
 			return err
 		}

@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/Docker/docker v20.10.18+incompatible
 	github.com/stretchr/testify v1.8.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -13,5 +14,4 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	golang.org/x/sys v0.0.0-20220908164124-27713097b956 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
