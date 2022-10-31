@@ -10,36 +10,14 @@ import (
 	"time"
 )
 
-var rootPath string
 var configFilePath string
 var badConfigFilePath string
-
-type testService struct {
-	name string
-	path string
-}
-
-var testServices = []testService{
-	{
-		name: "one",
-		path: "./test/one",
-	},
-	{
-		name: "two",
-		path: "./test/two",
-	},
-	{
-		name: "three",
-		path: "./test/three",
-	},
-}
 
 func init() {
 	root, err := os.Getwd()
 	if err != nil {
 		log.Fatal(err)
 	}
-	rootPath = root
 	configFilePath = filepath.Join(root, "./test/config.yaml")
 	badConfigFilePath = filepath.Join(root, "./test/badconfig.yaml")
 }
