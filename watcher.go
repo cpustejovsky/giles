@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/Docker/docker/pkg/filenotify"
 )
@@ -38,6 +39,7 @@ type watcher struct {
 	services  []Service
 	buildPath string
 	pids      []int
+	WaitGroup *sync.WaitGroup
 	ErrorChan chan error
 }
 
@@ -47,11 +49,13 @@ func NewWatcher(filePath string) (*watcher, error) {
 		return nil, err
 	}
 	buildpath := filepath.Join(wd, "./build.sh")
+	var wg sync.WaitGroup
 	w := watcher{
 		services:    []Service{},
 		FileWatcher: filenotify.NewPollingWatcher(),
 		pids:        []int{},
 		buildPath:   buildpath,
+		WaitGroup:   &wg,
 		ErrorChan:   make(chan error, 3),
 	}
 	err = w.read(filePath)
@@ -64,6 +68,7 @@ func NewWatcher(filePath string) (*watcher, error) {
 // CloseWatcher removes tmp builds directory and closes embedded filewatcher
 func (w *watcher) CloseWatcher() error {
 	defer w.Close()
+	defer w.stop()
 	wd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("error getting working directory:\t %v", err)
@@ -149,29 +154,31 @@ func (w *watcher) stop() error {
 
 // Start ranges over a slice of Service and ranges over the Children of the Service, running BuildAndRun for each child in a goroutine
 func (w *watcher) Start() {
+	w.WaitGroup.Add(len(w.services))
 	for _, service := range w.services {
 		path := service.Path
 		name := service.Name
 		randomNumber := rand.Intn(100)
 		args := []string{path, name, strconv.Itoa(randomNumber)}
-		go func() {
-			w.ErrorChan <- w.buildAndRun(w.buildPath, args)
-		}()
+		go w.buildAndRun(w.buildPath, args)
 	}
+	w.WaitGroup.Wait()
 }
 
-func (w *watcher) buildAndRun(buildpath string, args []string) error {
+func (w *watcher) buildAndRun(buildpath string, args []string) {
 	binary, err := build(buildpath, args)
 	if err != nil {
-		return err
+		w.ErrorChan <- err
 	}
-	return w.run(binary)
+	err = w.run(binary)
+	if err != nil {
+		w.ErrorChan <- err
+	}
 }
 
 // build takes the buildpath to know what build script to run and any additional arguments to pass in
 func build(buildpath string, args []string) (string, error) {
 	output, err := exec.Command(buildpath, args...).Output()
-
 	if err != nil {
 		return "", errors.New(string(output))
 	}
@@ -181,6 +188,7 @@ func build(buildpath string, args []string) (string, error) {
 
 // run creates a command from the binary path provided, sets up stdout and stderr, starts the command, and appends the process's Pid
 func (w *watcher) run(binary string) error {
+	defer w.WaitGroup.Done()
 	cmd := exec.Command(binary)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -192,15 +200,17 @@ func (w *watcher) run(binary string) error {
 	}
 	multi := io.MultiReader(stdout, stderr)
 	in := bufio.NewScanner(multi)
-	if err := cmd.Start(); err != nil {
+	if err = cmd.Start(); err != nil {
 		return err
 	}
 	w.pids = append(w.pids, cmd.Process.Pid)
-	for in.Scan() {
-		log.Printf(in.Text()) // write each line to your log, or anything you need
-	}
-	if err := in.Err(); err != nil {
-		log.Printf("error: %s", err)
-	}
+	go func(input *bufio.Scanner) {
+		for in.Scan() {
+			log.Printf(input.Text()) // write each line to your log, or anything you need
+		}
+		if err = input.Err(); err != nil {
+			w.ErrorChan <- err
+		}
+	}(in)
 	return nil
 }
