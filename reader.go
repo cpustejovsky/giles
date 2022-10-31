@@ -32,11 +32,9 @@ func (w *watcher) read(filepath string) error {
 		if k == "paths" {
 			paths, ok := v.([]any)
 			if !ok {
-				fmt.Println(paths)
 				return errors.New("incorrectly formatted paths key and value")
 			}
 			for _, path := range paths {
-				fmt.Println("PATH", path)
 				err = w.addPath(path.(string))
 				if err != nil {
 					return err
