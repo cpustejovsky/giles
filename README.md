@@ -34,7 +34,6 @@ import (
 func main() {
   sigs := make(chan os.Signal, 1)
   signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-  
   //pass in path to configuration yaml file
   w, err := giles.NewWatcher("path/to/your/config.yaml")
   if err != nil {
@@ -70,6 +69,7 @@ func main() {
 * Add finer-grained error handling
   * Specific errors from read method
 * Add error handling to:
+  * ~~NewWatcher~~
   * ~~Start~~
   * Watch
     * Make Watch a testable method

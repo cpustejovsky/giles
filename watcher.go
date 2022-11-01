@@ -30,19 +30,22 @@ type Watcher interface {
 
 /*
 watcher embeds filenotify.FileWatcher and contains:
+a services slice to store services watcher will run
 a pids slice for closing active processes
-a logger of type zap.SugaredLogger
-a rootPath to determine the tmp Service to build to
+a sync.WaitGroup to determine when services have been started
+an ErrorChan channel to pass errors to if goroutines fail
+a buildPath variable to store location of the build bash script
 */
 type watcher struct {
 	filenotify.FileWatcher
 	services  []Service
 	buildPath string
 	pids      []int
-	WaitGroup *sync.WaitGroup
+	wg        *sync.WaitGroup
 	ErrorChan chan error
 }
 
+// NewWatcher takes a filePath pointing to the yaml config file and returns a watcher
 func NewWatcher(filePath string) (*watcher, error) {
 	wd, err := os.Getwd()
 	if err != nil {
@@ -55,7 +58,7 @@ func NewWatcher(filePath string) (*watcher, error) {
 		FileWatcher: filenotify.NewPollingWatcher(),
 		pids:        []int{},
 		buildPath:   buildpath,
-		WaitGroup:   &wg,
+		wg:          &wg,
 		ErrorChan:   make(chan error, 3),
 	}
 	err = w.read(filePath)
@@ -154,15 +157,13 @@ func (w *watcher) stop() error {
 
 // Start ranges over a slice of Service and ranges over the Children of the Service, running BuildAndRun for each child in a goroutine
 func (w *watcher) Start() {
-	w.WaitGroup.Add(len(w.services))
 	for _, service := range w.services {
-		path := service.Path
-		name := service.Name
+		w.wg.Add(1)
 		randomNumber := rand.Intn(100)
-		args := []string{path, name, strconv.Itoa(randomNumber)}
+		args := []string{service.Path, service.Name, strconv.Itoa(randomNumber)}
 		go w.buildAndRun(w.buildPath, args)
 	}
-	w.WaitGroup.Wait()
+	w.wg.Wait()
 }
 
 func (w *watcher) buildAndRun(buildpath string, args []string) {
@@ -188,7 +189,7 @@ func build(buildpath string, args []string) (string, error) {
 
 // run creates a command from the binary path provided, sets up stdout and stderr, starts the command, and appends the process's Pid
 func (w *watcher) run(binary string) error {
-	defer w.WaitGroup.Done()
+	defer w.wg.Done()
 	cmd := exec.Command(binary)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
