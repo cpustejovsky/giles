@@ -1,7 +1,7 @@
-package giles_test
+package watcher_test
 
 import (
-	"github.com/cpustejovsky/giles"
+	"github.com/cpustejovsky/giles/watcher"
 	"github.com/stretchr/testify/assert"
 	"log"
 	"os"
@@ -27,21 +27,21 @@ func TestNewWatcher(t *testing.T) {
 	assert.Nil(t, err)
 	yamlLocation := filepath.Join(wd, "./test/test.yaml")
 	t.Run("returns ar error if .yaml is not at end of file path", func(t *testing.T) {
-		watcher, err := giles.NewWatcher("foo/bar.json")
+		watcher, err := watcher.NewWatcher("foo/bar.json")
 		assert.Error(t, err)
 		if watcher != nil {
 			watcher.CloseWatcher()
 		}
 	})
 	t.Run("returns error if file path not found", func(t *testing.T) {
-		watcher, err := giles.NewWatcher("foo/bar.yaml")
+		watcher, err := watcher.NewWatcher("foo/bar.yaml")
 		assert.Error(t, err)
 		if watcher != nil {
 			watcher.CloseWatcher()
 		}
 	})
 	t.Run("returns no error if file path is found", func(t *testing.T) {
-		watcher, err := giles.NewWatcher(yamlLocation)
+		watcher, err := watcher.NewWatcher(yamlLocation)
 		assert.Nil(t, err)
 		defer watcher.CloseWatcher()
 	})
@@ -49,7 +49,7 @@ func TestNewWatcher(t *testing.T) {
 
 func TestWatcher_Close(t *testing.T) {
 	t.Run("Watcher closes without error", func(t *testing.T) {
-		watcher, err := giles.NewWatcher(configFilePath)
+		watcher, err := watcher.NewWatcher(configFilePath)
 		assert.Nil(t, err)
 		watcher.Start()
 		err = watcher.CloseWatcher()
@@ -59,7 +59,7 @@ func TestWatcher_Close(t *testing.T) {
 
 func TestWatcher_Start(t *testing.T) {
 	t.Run("Start services without error", func(t *testing.T) {
-		watcher, err := giles.NewWatcher(configFilePath)
+		watcher, err := watcher.NewWatcher(configFilePath)
 		assert.Nil(t, err)
 		defer watcher.CloseWatcher()
 		watcher.Start()
@@ -71,7 +71,7 @@ func TestWatcher_Start(t *testing.T) {
 		}
 	})
 	t.Run("Start services with error", func(t *testing.T) {
-		watcher, err := giles.NewWatcher(badConfigFilePath)
+		watcher, err := watcher.NewWatcher(badConfigFilePath)
 		assert.Nil(t, err)
 		defer watcher.CloseWatcher()
 		watcher.Start()
@@ -84,7 +84,7 @@ func TestWatcher_Start(t *testing.T) {
 
 func TestWatcher_Watch(t *testing.T) {
 	t.Run("Watch files without error", func(t *testing.T) {
-		watcher, err := giles.NewWatcher(configFilePath)
+		watcher, err := watcher.NewWatcher(configFilePath)
 		assert.Nil(t, err)
 		defer watcher.CloseWatcher()
 		go watcher.Watch()

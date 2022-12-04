@@ -21,7 +21,7 @@ paths:
 
 Then download the package and, inside the gile repository, run:
 ```shell
-go run ./cmd/main.go /path/to/config.yaml
+go run main.go /path/to/config.yaml
 ```
 
 ## Next Steps

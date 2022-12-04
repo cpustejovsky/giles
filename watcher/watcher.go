@@ -1,4 +1,4 @@
-package giles
+package watcher
 
 import (
 	"bufio"

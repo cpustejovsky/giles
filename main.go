@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/cpustejovsky/giles"
+	"github.com/cpustejovsky/giles/watcher"
 	"log"
 	"os"
 	"os/signal"
@@ -18,7 +18,7 @@ func main() {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	//pass in path to configuration yaml file
-	w, err := giles.NewWatcher(config)
+	w, err := watcher.NewWatcher(config)
 	if err != nil {
 		log.Println("Error\t", err)
 		os.Exit(1)
