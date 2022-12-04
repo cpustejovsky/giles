@@ -9,11 +9,12 @@ import (
 )
 
 func main() {
-	config := os.Args[1]
-	if config == "" {
+	if len(os.Args) < 2 {
 		log.Println("please provide file path to yaml configuration file")
 		os.Exit(1)
 	}
+	config := os.Args[1]
+
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	//pass in path to configuration yaml file
