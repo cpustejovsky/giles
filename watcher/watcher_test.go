@@ -18,14 +18,12 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	root = filepath.Dir(root)
 	configFilePath = filepath.Join(root, "./test/config.yaml")
 	badConfigFilePath = filepath.Join(root, "./test/badconfig.yaml")
 }
 
 func TestNewWatcher(t *testing.T) {
-	wd, err := os.Getwd()
-	assert.Nil(t, err)
-	yamlLocation := filepath.Join(wd, "./test/test.yaml")
 	t.Run("returns ar error if .yaml is not at end of file path", func(t *testing.T) {
 		watcher, err := watcher.NewWatcher("foo/bar.json")
 		assert.Error(t, err)
@@ -41,7 +39,7 @@ func TestNewWatcher(t *testing.T) {
 		}
 	})
 	t.Run("returns no error if file path is found", func(t *testing.T) {
-		watcher, err := watcher.NewWatcher(yamlLocation)
+		watcher, err := watcher.NewWatcher(configFilePath)
 		assert.Nil(t, err)
 		defer watcher.CloseWatcher()
 	})
@@ -77,7 +75,9 @@ func TestWatcher_Start(t *testing.T) {
 		watcher.Start()
 		select {
 		case err := <-watcher.ErrorChan:
+			t.Log(err.Error())
 			assert.Error(t, err)
+			assert.NotNil(t, err)
 		}
 	})
 }
