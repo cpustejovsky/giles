@@ -25,10 +25,10 @@ func main() {
 	}
 	defer w.Close()
 
-	//Start watching for file changes
-	go w.Watch()
 	//Start services
 	w.Start()
+	//Start watching for file changes
+	go w.Watch()
 
 	select {
 	case err := <-w.ErrorChan:
