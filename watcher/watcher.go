@@ -46,13 +46,12 @@ type watcher struct {
 }
 
 // NewWatcher takes a filePath pointing to the yaml config file and returns a watcher
-func NewWatcher(filePath string) (*watcher, error) {
+func NewWatcher(filePath, buildpath string) (*watcher, error) {
 	wd, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
 	wd = filepath.Dir(wd)
-	buildpath := filepath.Join(wd, "./giles/build.sh")
 	log.Println("buildpath", buildpath)
 	var wg sync.WaitGroup
 	w := watcher{

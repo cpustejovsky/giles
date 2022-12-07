@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 )
 
@@ -14,11 +15,17 @@ func main() {
 		os.Exit(1)
 	}
 	config := os.Args[1]
-
+	wd, err := os.Getwd()
+	buildPath := filepath.Join(wd, "build.sh")
+	if err != nil {
+		log.Println("Error\t", err)
+		os.Exit(1)
+	}
+	log.Println(wd)
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	//pass in path to configuration yaml file
-	w, err := watcher.NewWatcher(config)
+	w, err := watcher.NewWatcher(config, buildPath)
 	if err != nil {
 		log.Println("Error\t", err)
 		os.Exit(1)
