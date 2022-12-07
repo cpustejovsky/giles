@@ -52,7 +52,8 @@ func NewWatcher(filePath string) (*watcher, error) {
 		return nil, err
 	}
 	wd = filepath.Dir(wd)
-	buildpath := filepath.Join(wd, "./build.sh")
+	buildpath := filepath.Join(wd, "./giles/build.sh")
+	log.Println("buildpath", buildpath)
 	var wg sync.WaitGroup
 	w := watcher{
 		services:    []Service{},
@@ -158,22 +159,28 @@ func (w *watcher) stop() error {
 
 // Start ranges over a slice of Service and ranges over the Children of the Service, running BuildAndRun for each child in a goroutine
 func (w *watcher) Start() {
+	log.Println("Starting services")
 	for _, service := range w.services {
+		log.Println("Starting service: ", service.Name)
 		w.wg.Add(1)
 		randomNumber := rand.Intn(100)
 		args := []string{service.Path, service.Name, strconv.Itoa(randomNumber)}
 		go w.buildAndRun(w.buildPath, args)
 	}
+	log.Println("waiting")
 	w.wg.Wait()
+	log.Println("done waiting")
 }
 
 func (w *watcher) buildAndRun(buildpath string, args []string) {
 	binary, err := build(buildpath, args)
 	if err != nil {
+		log.Println(err)
 		w.ErrorChan <- err
 	}
 	err = w.run(binary)
 	if err != nil {
+		log.Println(err)
 		w.ErrorChan <- err
 	}
 }
