@@ -51,6 +51,7 @@ func NewWatcher(filePath string) (*watcher, error) {
 	if err != nil {
 		return nil, err
 	}
+	wd = filepath.Dir(wd)
 	buildpath := filepath.Join(wd, "./build.sh")
 	var wg sync.WaitGroup
 	w := watcher{
