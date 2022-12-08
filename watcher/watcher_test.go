@@ -1,11 +1,13 @@
 package watcher_test
 
 import (
+	"fmt"
 	"github.com/cpustejovsky/giles/watcher"
 	"github.com/stretchr/testify/assert"
 	"log"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 )
@@ -13,6 +15,7 @@ import (
 var configFilePath string
 var badConfigFilePath string
 var buildPath string
+var binaryPath string
 
 func init() {
 	root, err := os.Getwd()
@@ -22,6 +25,7 @@ func init() {
 	root = filepath.Dir(root)
 	configFilePath = filepath.Join(root, "./test/config.yaml")
 	badConfigFilePath = filepath.Join(root, "./test/badconfig.yaml")
+	binaryPath = filepath.Join(root, "./test/test-binary")
 	buildPath = filepath.Join(root, "build.sh")
 }
 
@@ -97,4 +101,37 @@ func TestWatcher_Watch(t *testing.T) {
 			return
 		}
 	})
+}
+
+func TestWatcher_Build(t *testing.T) {
+	name := "one"
+	randomNum := "420"
+	t.Run("Build passes with correct build path and arguments", func(t *testing.T) {
+
+		wantBin := fmt.Sprintf("./tmp/builds/%s-%s", name, randomNum)
+		bin, err := watcher.Build(buildPath, []string{"/home/cpustejovsky/go/src/giles/test/two", name, randomNum})
+		assert.Nil(t, err)
+		assert.Equal(t, wantBin, bin)
+	})
+	t.Run("Build fails with incorrect build path", func(t *testing.T) {
+		bin, err := watcher.Build("", []string{"/home/cpustejovsky/go/src/giles/test/two", name, randomNum})
+		assert.Error(t, err)
+		assert.Equal(t, "", bin)
+	})
+	t.Run("Build fails with incorrect arguments", func(t *testing.T) {
+		bin, err := watcher.Build(buildPath, []string{"/home/cputwo"})
+		assert.Error(t, err)
+		t.Log(err)
+		assert.Equal(t, "", bin)
+	})
+}
+
+func TestWatcher_Run(t *testing.T) {
+	watcher, err := watcher.NewWatcher(configFilePath, buildPath)
+	assert.Nil(t, err)
+	defer watcher.CloseWatcher()
+	var wg sync.WaitGroup
+	wg.Add(1)
+	err = watcher.Run(&wg, binaryPath)
+	assert.Nil(t, err)
 }
