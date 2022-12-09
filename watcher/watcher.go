@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"math/rand"
 	"os"
@@ -201,19 +200,20 @@ func (w *watcher) Run(wg *sync.WaitGroup, binary string) error {
 	if err != nil {
 		return err
 	}
-	multi := io.MultiReader(stdout, stderr)
-	in := bufio.NewScanner(multi)
 	if err = cmd.Start(); err != nil {
 		return err
 	}
 	w.pids = append(w.pids, cmd.Process.Pid)
-	go func(input *bufio.Scanner) {
-		for in.Scan() {
-			log.Printf(input.Text())
-		}
-		if err = input.Err(); err != nil {
-			w.ErrorChan <- err
-		}
-	}(in)
+	go logOutput(bufio.NewScanner(stdout), w.ErrorChan)
+	go logOutput(bufio.NewScanner(stderr), w.ErrorChan)
 	return nil
+}
+
+func logOutput(input *bufio.Scanner, errChan chan error) {
+	for input.Scan() {
+		log.Println(input.Text())
+	}
+	if err := input.Err(); err != nil {
+		errChan <- err
+	}
 }
