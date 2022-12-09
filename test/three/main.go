@@ -1,20 +1,20 @@
 package main
 
 import (
-	"log"
+	"github.com/sirupsen/logrus"
 	"net/http"
 )
 
 func main() {
 	serverErrors := make(chan error, 1)
 	go func() {
-		log.Println("api router started")
+		logrus.Info("api router started using logrus")
 		serverErrors <- http.ListenAndServe(":8002", nil)
 	}()
 
 	select {
 	case err := <-serverErrors:
-		log.Printf("server error: %v\n", err)
+		logrus.Error("server error: %v\n", err)
 	}
-	log.Println("stopping service")
+	logrus.Info("stopping service")
 }
