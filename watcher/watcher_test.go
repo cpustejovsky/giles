@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
 	"time"
 )
@@ -107,7 +106,6 @@ func TestWatcher_Build(t *testing.T) {
 	name := "one"
 	randomNum := "420"
 	t.Run("Build passes with correct build path and arguments", func(t *testing.T) {
-
 		wantBin := fmt.Sprintf("./tmp/builds/%s-%s", name, randomNum)
 		bin, err := watcher.Build(buildPath, []string{"/home/cpustejovsky/go/src/giles/test/two", name, randomNum})
 		assert.Nil(t, err)
@@ -127,11 +125,7 @@ func TestWatcher_Build(t *testing.T) {
 }
 
 func TestWatcher_Run(t *testing.T) {
-	watcher, err := watcher.NewWatcher(configFilePath, buildPath)
-	assert.Nil(t, err)
-	defer watcher.CloseWatcher()
-	var wg sync.WaitGroup
-	wg.Add(1)
-	err = watcher.Run(&wg, binaryPath)
+	errChan := make(chan error)
+	_, err := watcher.Run(binaryPath, errChan)
 	assert.Nil(t, err)
 }

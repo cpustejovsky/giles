@@ -166,19 +166,21 @@ func (w *watcher) Start() {
 }
 
 func (w *watcher) buildAndRun(wg *sync.WaitGroup, args []string) {
+	defer wg.Done()
 	binary, err := Build(w.buildPath, args)
 	if err != nil {
 		log.Println(err)
 		w.ErrorChan <- err
 	}
-	err = w.Run(wg, binary)
+	pid, err := Run(binary, w.ErrorChan)
 	if err != nil {
 		log.Println(err)
 		w.ErrorChan <- err
 	}
+	w.pids = append(w.pids, pid)
 }
 
-// build takes the buildpath to know what build script to run and any additional arguments to pass in
+// Build takes the buildpath to know what build script to run and any additional arguments to pass in
 func Build(buildpath string, args []string) (string, error) {
 	output, err := exec.Command(buildpath, args...).Output()
 	if err != nil {
@@ -188,25 +190,23 @@ func Build(buildpath string, args []string) (string, error) {
 	return binary, nil
 }
 
-// Run creates a command from the binary path provided, sets up stdout and stderr, starts the command, and appends the process's Pid
-func (w *watcher) Run(wg *sync.WaitGroup, binary string) error {
-	defer wg.Done()
+// Run creates a command from the binary path provided, sets up stdout and stderr, starts the command, and returns the process's Pid
+func Run(binary string, errChan chan error) (int, error) {
 	cmd := exec.Command(binary)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return err
+		return 0, err
 	}
+	go logOutput(bufio.NewScanner(stdout), errChan)
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
-		return err
+		return 0, err
 	}
+	go logOutput(bufio.NewScanner(stderr), errChan)
 	if err = cmd.Start(); err != nil {
-		return err
+		return 0, err
 	}
-	w.pids = append(w.pids, cmd.Process.Pid)
-	go logOutput(bufio.NewScanner(stdout), w.ErrorChan)
-	go logOutput(bufio.NewScanner(stderr), w.ErrorChan)
-	return nil
+	return cmd.Process.Pid, nil
 }
 
 func logOutput(input *bufio.Scanner, errChan chan error) {
