@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"github.com/Docker/docker/pkg/filenotify"
 	"log"
 	"math/rand"
 	"os"
@@ -12,8 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-
-	"github.com/Docker/docker/pkg/filenotify"
 )
 
 // Service provides us with a Name to use to identify the service when it's binary is built and Run along with the path that it will Run
@@ -38,26 +37,21 @@ a buildPath variable to store location of the Build bash script
 type watcher struct {
 	filenotify.FileWatcher
 	services  []Service
-	buildPath string
+	rootPath  string
 	pids      []int
 	ErrorChan chan error
 }
 
 // NewWatcher takes a filePath pointing to the yaml config file and returns a watcher
-func NewWatcher(filePath, buildpath string) (*watcher, error) {
-	wd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-	wd = filepath.Dir(wd)
+func NewWatcher(filePath, root string) (*watcher, error) {
 	w := watcher{
 		services:    []Service{},
 		FileWatcher: filenotify.NewPollingWatcher(),
 		pids:        []int{},
-		buildPath:   buildpath,
-		ErrorChan:   make(chan error, 3),
+		rootPath:    root,
+		ErrorChan:   make(chan error),
 	}
-	err = w.read(filePath)
+	err := w.read(filePath)
 	if err != nil {
 		return nil, err
 	}
@@ -119,6 +113,7 @@ func (w *watcher) Watch() {
 				return
 			}
 			w.ErrorChan <- err
+			return
 		}
 	}
 }
@@ -156,35 +151,43 @@ func (w *watcher) stop() error {
 func (w *watcher) Start() {
 	var wg sync.WaitGroup
 	for _, service := range w.services {
-		log.Println("Starting service: ", service.Name)
 		wg.Add(1)
+		log.Println("Starting service: ", service.Name)
 		randomNumber := rand.Intn(100)
-		args := []string{service.Path, service.Name, strconv.Itoa(randomNumber)}
-		go w.buildAndRun(&wg, args)
+		tmpDirectory := filepath.Join(w.rootPath, "tmp/builds/")
+		args := []string{service.Path, service.Name, strconv.Itoa(randomNumber), tmpDirectory}
+		go func(w *watcher) {
+			err := w.buildAndRun(&wg, args)
+			if err != nil {
+				log.Println(err)
+				w.ErrorChan <- err
+			}
+		}(w)
 	}
 	wg.Wait()
 }
 
-func (w *watcher) buildAndRun(wg *sync.WaitGroup, args []string) {
+func (w *watcher) buildAndRun(wg *sync.WaitGroup, args []string) error {
 	defer wg.Done()
-	binary, err := Build(w.buildPath, args)
+	binary, err := Build(w.rootPath, args)
 	if err != nil {
-		log.Println(err)
-		w.ErrorChan <- err
+		return err
 	}
 	pid, err := Run(binary, w.ErrorChan)
 	if err != nil {
-		log.Println(err)
-		w.ErrorChan <- err
+		return err
 	}
 	w.pids = append(w.pids, pid)
+	return nil
 }
 
 // Build takes the buildpath to know what build script to run and any additional arguments to pass in
-func Build(buildpath string, args []string) (string, error) {
-	output, err := exec.Command(buildpath, args...).Output()
+func Build(rootPath string, args []string) (string, error) {
+	buildPath := filepath.Join(rootPath, "./build.sh")
+	cmd := exec.Command(buildPath, args...)
+	output, err := cmd.Output()
 	if err != nil {
-		return "", errors.New(fmt.Sprintf("error: %s; output: %s;", err.Error(), string(output)))
+		return "", errors.New(fmt.Sprintf("error: %s; output: %s;", cmd.Stderr, string(output)))
 	}
 	binary := strings.TrimSpace(string(output))
 	return binary, nil

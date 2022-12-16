@@ -1,8 +1,9 @@
 #!/bin/bash
-mkdir -p ./tmp/builds/
-chmod +777 ./tmp/builds/
-outputName=./tmp/builds/"$2"-"$3"
-go build -o "$outputName" "$1"
+mkdir -p "$4"
+chmod +777 "$4"
+outputName="$4"/"$2"-"$3"
+cd "$1" || echo "build failed could not change directory"
+go build -o "$outputName"
 if [ "$?" == 1 ];
 then
     echo "build failed; path: $1; output: $outputName"
